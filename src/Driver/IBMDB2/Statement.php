@@ -179,8 +179,9 @@ final class Statement implements StatementInterface
                 $this->copyStreamToStream($value, $handle);
 
                 $this->bind($param, $path, DB2_PARAM_FILE, DB2_BINARY);
+                unset($path);
             } else {
-                $this->bind($param, $value, DB2_PARAM_IN, DB2_CHAR);
+                $this->bind($param, $this->lobs[$param], DB2_PARAM_IN, DB2_CHAR);
             }
         }
 

@@ -26,6 +26,7 @@ class BlobTest extends FunctionalTestCase
         $table->addColumn('id', 'integer');
         $table->addColumn('clobcolumn', 'text', ['notnull' => false]);
         $table->addColumn('blobcolumn', 'blob', ['notnull' => false]);
+        $table->addColumn('blobcolumn2', 'blob', ['notnull' => false]);
         $table->setPrimaryKey(['id']);
 
         $this->dropAndCreateTable($table);
@@ -101,6 +102,24 @@ class BlobTest extends FunctionalTestCase
         $this->assertBlobContains('test');
     }
 
+    public function testSelectWith2Bobs(): void
+    {
+        $this->connection->insert('blob_table', [
+            'id'          => 1,
+            'clobcolumn'   => 'test',
+            'blobcolumn'   => 'test',
+            'blobcolumn2'   => 'test123',
+        ], [
+            ParameterType::INTEGER,
+            ParameterType::STRING,
+            ParameterType::LARGE_OBJECT,
+            ParameterType::LARGE_OBJECT,
+        ]);
+
+        $this->assertBlobContains('test');
+        $this->assertBlob2Contains('test123');
+    }
+
     public function testUpdate(): void
     {
         $this->connection->insert('blob_table', [
@@ -171,7 +190,7 @@ class BlobTest extends FunctionalTestCase
 
     private function assertBlobContains(string $text): void
     {
-        [, $blobValue] = $this->fetchRow();
+        [, $blobValue, $blob2Value] = $this->fetchRow();
 
         $blobValue = Type::getType('blob')->convertToPHPValue($blobValue, $this->connection->getDatabasePlatform());
 
@@ -179,10 +198,20 @@ class BlobTest extends FunctionalTestCase
         self::assertEquals($text, stream_get_contents($blobValue));
     }
 
+    private function assertBlob2Contains(string $text): void
+    {
+        [$clobValue, $blobValue, $blob2Value] = $this->fetchRow();
+
+        $blob2Value = Type::getType('blob')->convertToPHPValue($blob2Value, $this->connection->getDatabasePlatform());
+
+        self::assertIsResource($blob2Value);
+        self::assertEquals($text, stream_get_contents($blob2Value));
+    }
+
     /** @return list<mixed> */
     private function fetchRow(): array
     {
-        $rows = $this->connection->fetchAllNumeric('SELECT clobcolumn, blobcolumn FROM blob_table');
+        $rows = $this->connection->fetchAllNumeric('SELECT clobcolumn, blobcolumn, blobcolumn2 FROM blob_table');
 
         self::assertCount(1, $rows);
 
